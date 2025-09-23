@@ -3,7 +3,7 @@
   hosts: localhost
   gather_facts: false
   vars_files:
-    - ./vars/bgp_evpn_fabric_devices.yml
+    - ./vars/fabric_overlay_topology_devices.yml
   vars:
     output_dir: ./rendered
     dnac_credentials_file: ../credentials.yml
