@@ -1,0 +1,135 @@
+---
+# Global fabric BGP EVPN VxLAN parameters
+asn: 1001
+peer_policy:
+  leaf: leaf_peer_policy_template
+  spine: spine_peer_policy_template
+  border: border_peer_policy_template
+peer_session:
+  leaf: leaf_peer_session_template
+  spine: spine_peer_session_template
+  border: border_peer_session_template
+router_id_interface: Loopback0
+update_source: Loopback0
+source_interface: Loopback0
+peer_groups:
+  # Each device refers to neighbors by name so we can resolve IP automatically
+  leaf: []  # leaves will peer with spines (populated dynamically if needed)
+  spine: [] # spines will peer with leaves, borders and other spines (populated dynamically if needed)
+  border: [] # borders will peer with spines (populated dynamically if needed)
+
+# Device inventory grouped by role
+fabric_devices:
+  leaf:  # multiple leaf groups allowed
+    - group_name: leaf-group1
+      devices:
+        - device_name: leaf-device1
+          mgmt_ip: 100.10.10.1
+          username: netops
+          password: "{{ vault_leaf_password | default('ChangeMeLeaf') }}"
+          loopback_ip: 115.1.1.1
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+        - device_name: leaf-device2
+          mgmt_ip: 100.10.10.2
+          username: netops
+          password: "{{ vault_leaf_password | default('ChangeMeLeaf') }}"
+          loopback_ip: 115.2.2.2
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+    - group_name: leaf-group2
+      devices:
+        - device_name: leaf-device3
+          mgmt_ip: 100.10.10.3
+          username: netops
+          password: "{{ vault_leaf_password | default('ChangeMeLeaf') }}"
+          loopback_ip: 115.3.3.3
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+        - device_name: leaf-device4
+          mgmt_ip: 100.10.10.4
+          username: netops
+          password: "{{ vault_leaf_password | default('ChangeMeLeaf') }}"
+          loopback_ip: 115.4.4.4
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+  spine:  # only one spine group typically
+    - group_name: spine-group1
+      devices:
+        - device_name: spine-device1
+          mgmt_ip: 100.10.10.5
+          username: netops
+          password: "{{ vault_spine_password | default('ChangeMeSpine') }}"
+          loopback_ip: 115.5.5.5
+          neighbors:
+            - 115.1.1.1
+            - 115.2.2.2
+            - 115.3.3.3
+            - 115.4.4.4
+            - 115.6.6.6
+            - 115.7.7.7
+            - 115.8.8.8
+            - 115.9.9.9
+            - 115.10.10.10
+        - device_name: spine-device2
+          mgmt_ip: 100.10.10.6
+          username: netops
+          password: "{{ vault_spine_password | default('ChangeMeSpine') }}"
+          loopback_ip: 115.6.6.6
+          neighbors:
+            - 115.1.1.1
+            - 115.2.2.2
+            - 115.3.3.3
+            - 115.4.4.4
+            - 115.5.5.5
+            - 115.7.7.7
+            - 115.8.8.8
+            - 115.9.9.9
+            - 115.10.10.10
+  border:  # multiple border groups allowed
+    - group_name: border-group1
+      devices:
+        - device_name: border-device1
+          mgmt_ip: 100.10.10.7
+          username: netops
+          password: "{{ vault_border_password | default('ChangeMeBorder') }}"
+          loopback_ip: 115.7.7.7
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+        - device_name: border-device2
+          mgmt_ip: 100.10.10.8
+          username: netops
+          password: "{{ vault_border_password | default('ChangeMeBorder') }}"
+          loopback_ip: 115.8.8.8
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+    - group_name: border-group2
+      devices:
+        - device_name: border-device3
+          mgmt_ip: 100.10.10.9
+          username: netops
+          password: "{{ vault_border_password | default('ChangeMeBorder') }}"
+          loopback_ip: 115.9.9.9
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+        - device_name: border-device4
+          mgmt_ip: 100.10.10.10
+          username: netops
+          password: "{{ vault_border_password | default('ChangeMeBorder') }}"
+          loopback_ip: 115.10.10.10
+          neighbors:
+            - 115.5.5.5
+            - 115.6.6.6
+
+# Mapping role to template path
+role_template_map:
+  leaf: ../jinja_templates/fabric_leaf_cli.j2
+  spine: ../jinja_templates/fabric_spine_cli.j2
+  border: ../jinja_templates/fabric_border_cli.j2
