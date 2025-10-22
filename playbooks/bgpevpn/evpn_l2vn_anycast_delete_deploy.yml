@@ -1,0 +1,71 @@
+---
+- name: Deploy BGP EVPN L2VN Configuration
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../credentials.yml
+    - ./vars/evpn_l2vn_anycast_delete_var.yml
+  tasks:
+        - name: Validate top-level L2VN delete input
+          ansible.builtin.assert:
+            that:
+              - l2vns is defined
+              - l2vns is iterable
+              - l2vns | length > 0
+            fail_msg: "Invalid top-level vars: need non-empty 'l2vns' list."
+
+        - name: Validate each L2VN entry mandatory fields
+          ansible.builtin.assert:
+            that:
+              - item.l2vn_name is defined
+              - item.vlan_id is defined
+              - item.vni is defined
+            fail_msg: >-
+              L2VN validation failed for index {{ idx }} (name={{ item.l2vn_name|default('UNNAMED') }}): Required fields missing or malformed. Item={{ item | to_nice_yaml }}
+          loop: "{{ l2vns }}"
+          loop_control:
+            index_var: idx
+            label: "{{ item.l2vn_name | default('UNNAMED') }}"
+
+        - name: Render l2vn_anycast_delete_cli.j2 to a variable
+          ansible.builtin.set_fact:
+            rendered_l2vn_anycast_delete: "{{ lookup('template', '/Users/vpenke/ansible/dev/collections/ansible_collections/cisco/dnac/playbooks/bgpevpn/jinja_templates/l2vn_anycast_delete_cli.j2') }}"
+
+        - name: Print rendered_l2vn_anycast_delete
+          ansible.builtin.debug:
+            var: rendered_l2vn_anycast_delete
+
+        - name: Create new l2vn anycast delete template.
+          cisco.dnac.template_workflow_manager:
+            dnac_host: "{{ dnac_host }}"
+            dnac_port: "{{ dnac_port }}"
+            dnac_username: "{{ dnac_username }}"
+            dnac_password: "{{ dnac_password }}"
+            dnac_verify: "{{ dnac_verify }}"
+            dnac_version: "{{ dnac_version }}"
+            dnac_debug: "{{ dnac_debug }}"
+            dnac_log_level: DEBUG
+            dnac_log: true
+            config_verify: true
+            state: merged
+            config:
+              - configuration_templates:
+                  project_name: "evpn_l2vn_anycast_delete"
+                  template_name: "evpn_l2vn_anycast_delete_template"
+                  template_content: "{{ rendered_l2vn_anycast_delete }}"
+                  version_description: "Auto-generated BGP EVPN L2VN anycast delete config"
+                  language: JINJA
+                  software_type: "IOS-XE"
+                  device_types:
+                    - product_family: Switches and Hubs
+              - deploy_template:
+                  project_name: "evpn_l2vn_anycast_delete"
+                  template_name: "evpn_l2vn_anycast_delete_template"
+                  force_push: true
+                  template_parameters:
+                    - param_name: "vlan_id"
+                      param_value: "1431"
+                    - param_name: "vlan_name"
+                      param_value: "testvlan31"
+                  device_details:
+                    device_ips: ["172.27.248.81"]

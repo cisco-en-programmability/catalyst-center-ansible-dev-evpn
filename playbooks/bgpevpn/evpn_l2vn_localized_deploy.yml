@@ -1,0 +1,81 @@
+---
+- name: Deploy BGP EVPN L2VN Configuration
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../credentials.yml
+    - ./vars/evpn_l2vn_localized_var.yml
+  tasks:
+        - name: Validate top-level L2VN input
+          ansible.builtin.assert:
+            that:
+              - asn is defined
+              - mac_address is defined
+              - l2vns is defined
+              - l2vns is iterable
+              - l2vns | length > 0
+            fail_msg: "Missing or invalid top-level vars: need 'asn' and non-empty 'l2vns' list."
+
+        - name: Validate each L2VN entry mandatory fields
+          ansible.builtin.assert:
+            that:
+              - item.l2vn_name is defined
+              - item.vlan_id is defined
+              - item.associated_l3vn is defined
+              - item.l2vn_pool is defined
+              - item.l2vn_pool.ipv4_address is defined
+              - item.l2vn_pool.ipv4_netmask is defined
+              - (item.l2vn_pool.ipv6_address is not defined) or (item.l2vn_pool.ipv6_netmask is defined)
+              - (item.dhcp_relay is not defined) or (item.dhcp_relay.dhcpv4_relay is not defined) or (item.dhcp_relay.dhcpv4_relay.dhcpv4_server_ip is defined)
+              - (item.dhcp_relay is not defined) or (item.dhcp_relay.dhcpv4_relay is not defined) or (item.dhcp_relay.dhcpv4_relay.dhcpv4_server_vrf is defined)
+              - (item.dhcp_relay is not defined) or (item.dhcp_relay.dhcpv6_relay is not defined) or (item.dhcp_relay.dhcpv6_relay.dhcpv6_server_ip is defined)
+              - (item.dhcp_relay is not defined) or (item.dhcp_relay.dhcpv6_relay is not defined) or (item.dhcp_relay.dhcpv6_relay.dhcpv6_server_vrf is defined)
+            fail_msg: >-
+              L2VN validation failed for index {{ idx }} (name={{ item.l2vn_name|default('UNNAMED') }}): Required fields missing or malformed. Item={{ item | to_nice_yaml }}
+          loop: "{{ l2vns }}"
+          loop_control:
+            index_var: idx
+            label: "{{ item.l2vn_name | default('UNNAMED') }}"
+
+        - name: Render l2vn_localized_cli.j2 to a variable
+          ansible.builtin.set_fact:
+            rendered_l2vn_localized: "{{ lookup('template', '/Users/vpenke/ansible/dev/collections/ansible_collections/cisco/dnac/playbooks/bgpevpn/jinja_templates/l2vn_localized_cli.j2') }}"
+
+        - name: Print rendered_l2vn_localized
+          ansible.builtin.debug:
+            var: rendered_l2vn_localized
+
+        - name: Create new l2vn localized template.
+          cisco.dnac.template_workflow_manager:
+            dnac_host: "{{ dnac_host }}"
+            dnac_port: "{{ dnac_port }}"
+            dnac_username: "{{ dnac_username }}"
+            dnac_password: "{{ dnac_password }}"
+            dnac_verify: "{{ dnac_verify }}"
+            dnac_version: "{{ dnac_version }}"
+            dnac_debug: "{{ dnac_debug }}"
+            dnac_log_level: DEBUG
+            dnac_log: true
+            config_verify: true
+            state: merged
+            config:
+              - configuration_templates:
+                  project_name: "evpn_l2vn_localized"
+                  template_name: "evpn_l2vn_localized_template"
+                  template_content: "{{ rendered_l2vn_localized }}"
+                  version_description: "Auto-generated BGP EVPN L2VN localized config"
+                  language: JINJA
+                  software_type: "IOS-XE"
+                  device_types:
+                    - product_family: Switches and Hubs
+              - deploy_template:
+                  project_name: "evpn_l2vn_localized"
+                  template_name: "evpn_l2vn_localized_template"
+                  force_push: true
+                  template_parameters:
+                    - param_name: "vlan_id"
+                      param_value: "1431"
+                    - param_name: "vlan_name"
+                      param_value: "testvlan31"
+                  device_details:
+                    device_ips: ["172.27.248.81"]
