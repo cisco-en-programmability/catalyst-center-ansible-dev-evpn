@@ -1,0 +1,10 @@
+{% for port in ports %}
+interface {{ port.port_name }}
+ no switchport mode
+{% if port.switchport_mode == 'access' %}
+ no switchport access vlan
+{% elif port.switchport_mode == 'trunk' %}
+ no switchport trunk allowed vlan
+{% endif %}
+ exit
+{% endfor %}

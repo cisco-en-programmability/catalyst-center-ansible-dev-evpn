@@ -1,0 +1,4 @@
+ports:
+  - port_name: "GigabitEthernet1/0/5"
+    switchport_mode: "trunk"
+    allowed_vlans: "10,20,30,40,45-60"

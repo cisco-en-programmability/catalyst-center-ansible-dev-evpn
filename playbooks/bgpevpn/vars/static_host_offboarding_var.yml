@@ -1,0 +1,3 @@
+ports:
+  - port_name: "GigabitEthernet1/0/5"
+    switchport_mode: "trunk"
