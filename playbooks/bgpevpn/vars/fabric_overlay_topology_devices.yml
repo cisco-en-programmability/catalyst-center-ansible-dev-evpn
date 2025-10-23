@@ -17,6 +17,11 @@ peer_groups:
   leaf: []  # leaves will peer with spines (populated dynamically if needed)
   spine: [] # spines will peer with leaves, borders and other spines (populated dynamically if needed)
   border: [] # borders will peer with spines (populated dynamically if needed)
+proj_name: BGP_EVPN_FABRIC_AUTOGEN
+soft_type: IOS-XE
+state: merged
+language: JINJA
+product_family: Switches and Hubs
 
 # Device inventory grouped by role
 fabric_devices:
@@ -130,6 +135,9 @@ fabric_devices:
 
 # Mapping role to template path
 role_template_map:
-  leaf: ../jinja_templates/fabric_leaf_cli.j2
-  spine: ../jinja_templates/fabric_spine_cli.j2
-  border: ../jinja_templates/fabric_border_cli.j2
+  leaf: ./jinja_templates/bgp_evpn_fabric_leaf_cli.j2
+  spine: ./jinja_templates/bgp_evpn_fabric_spine_cli.j2
+  border: ./jinja_templates/bgp_evpn_fabric_border_cli.j2
+  leaf_delete: ./jinja_templates/bgp_evpn_fabric_leaf_delete_cli.j2
+  spine_delete: ./jinja_templates/bgp_evpn_fabric_spine_delete_cli.j2
+  border_delete: ./jinja_templates/bgp_evpn_fabric_border_delete_cli.j2

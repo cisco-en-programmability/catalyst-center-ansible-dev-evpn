@@ -1,0 +1,19 @@
+no interface nve1
+!
+{# l2vpn needed?#}
+no l2vpn evpn
+!
+
+no ip dhcp-relay source-interface {{dhcp_source_interface}}
+no ip dhcp relay information option vpn
+no ip dhcp relay information option
+no ip dhcp compatibility suboption link-selection standard
+no ip dhcp compatibility suboption server-override standard
+!
+
+no ipv6 dhcp-relay source-interface {{dhcp_source_interface}}
+no ipv6 dhcp-relay option vpn
+!
+
+no router bgp {{asn}}
+!
