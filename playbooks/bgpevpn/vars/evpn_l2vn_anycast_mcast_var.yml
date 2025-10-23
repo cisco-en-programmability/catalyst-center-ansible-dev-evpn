@@ -1,0 +1,14 @@
+asn: 1001
+mac_address: 00:0c:29:a1:bd:78
+l2vns:
+  - l2vn_name: L2VN-mcast-12
+    vlan_id: 12
+    vni: 5001
+    associated_l3vn: vrf-1
+    multicast_group: 237.1.1.1
+    l2vn_pool:
+        ipv4_address: 12.12.0.1
+        ipv4_netmask: 255.255.0.0
+        ipv6_address: 2001::1
+        ipv6_netmask: 64
+

@@ -1,0 +1,73 @@
+---
+- name: Static Host Onboarding Configuration
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../credentials.yml
+    - ./vars/static_host_onboarding_var.yml
+
+  tasks:
+        - name: Validate top-level Ports input
+          ansible.builtin.assert:
+            that:
+              - ports is defined
+              - ports is iterable
+              - ports | length > 0
+            fail_msg: "Missing or invalid top-level vars: need non-empty 'ports' list."
+
+        - name: Validate each port entry mandatory fields
+          ansible.builtin.assert:
+            that:
+              - item.port_name is defined
+              - item.switchport_mode is defined
+              - (item.access_vlan is defined and item.allowed_vlans is not defined) or (item.access_vlan is not defined and item.allowed_vlans is defined)
+
+            fail_msg: >-
+              Port validation failed for index {{ idx }} (name={{ item.port_name|default('UNNAMED') }}): Required fields missing or malformed, or both/neither 'access_vlan' and 'allowed_vlans' defined. Item={{ item | to_nice_yaml }}
+          loop: "{{ ports }}"
+          loop_control:
+            index_var: idx
+            label: "{{ item.port_name | default('UNNAMED') }}"
+
+        - name: Render static_host_onboarding_cli.j2 to a variable
+          ansible.builtin.set_fact:
+            rendered_static_host_onboarding: "{{ lookup('template', '/Users/vpenke/ansible/dev/collections/ansible_collections/cisco/dnac/playbooks/bgpevpn/jinja_templates/static_host_onboarding_cli.j2') }}"
+
+        - name: Print rendered_static_host_onboarding
+          ansible.builtin.debug:
+            var: rendered_static_host_onboarding
+
+        - name: Create new static host onboarding template.
+          cisco.dnac.template_workflow_manager:
+            dnac_host: "{{ dnac_host }}"
+            dnac_port: "{{ dnac_port }}"
+            dnac_username: "{{ dnac_username }}"
+            dnac_password: "{{ dnac_password }}"
+            dnac_verify: "{{ dnac_verify }}"
+            dnac_version: "{{ dnac_version }}"
+            dnac_debug: "{{ dnac_debug }}"
+            dnac_log_level: DEBUG
+            dnac_log: true
+            config_verify: true
+            state: merged
+            config:
+              - configuration_templates:
+                  project_name: "static_host_onboarding"
+                  template_name: "static_host_onboarding_template"
+                  template_content: "{{ rendered_static_host_onboarding }}"
+                  version_description: "Auto-generated static host onboarding config"
+                  language: JINJA
+                  software_type: "IOS-XE"
+                  device_types:
+                    - product_family: Switches and Hubs
+              - deploy_template:
+                  project_name: "static_host_onboarding"
+                  template_name: "static_host_onboarding_template"
+                  force_push: true
+                  template_parameters:
+                    - param_name: "vlan_id"
+                      param_value: "1431"
+                    - param_name: "vlan_name"
+                      param_value: "testvlan31"
+                  device_details:
+                    device_ips: ["172.27.248.81"]

@@ -1,0 +1,4 @@
+l2vns:
+    - l2vn_name: L2VN-11
+      vlan_id: 10
+      vni: 5001

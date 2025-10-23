@@ -1,0 +1,5 @@
+l2vns:
+    - l2vn_name: L2VN-mcast-12
+      vlan_id: 12
+      vni: 5001
+      multicast_group: 237.1.1.1

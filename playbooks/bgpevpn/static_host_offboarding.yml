@@ -1,0 +1,72 @@
+---
+- name: Static Host Offboarding Configuration
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../credentials.yml
+    - ./vars/static_host_offboarding_var.yml
+
+  tasks:
+        - name: Validate top-level Ports input
+          ansible.builtin.assert:
+            that:
+              - ports is defined
+              - ports is iterable
+              - ports | length > 0
+            fail_msg: "Missing or invalid top-level vars: need non-empty 'ports' list."
+
+        - name: Validate each port entry mandatory fields
+          ansible.builtin.assert:
+            that:
+              - item.port_name is defined
+              - item.switchport_mode is defined
+
+            fail_msg: >-
+              Port validation failed for index {{ idx }} (name={{ item.port_name|default('UNNAMED') }}): Required fields missing or malformed. Item={{ item | to_nice_yaml }}
+          loop: "{{ ports }}"
+          loop_control:
+            index_var: idx
+            label: "{{ item.port_name | default('UNNAMED') }}"
+
+        - name: Render static_host_offboarding_cli.j2 to a variable
+          ansible.builtin.set_fact:
+            rendered_static_host_offboarding: "{{ lookup('template', '/Users/vpenke/ansible/dev/collections/ansible_collections/cisco/dnac/playbooks/bgpevpn/jinja_templates/static_host_offboarding_cli.j2') }}"
+
+        - name: Print rendered_static_host_offboarding
+          ansible.builtin.debug:
+            var: rendered_static_host_offboarding
+
+        - name: Create new static host offboarding template.
+          cisco.dnac.template_workflow_manager:
+            dnac_host: "{{ dnac_host }}"
+            dnac_port: "{{ dnac_port }}"
+            dnac_username: "{{ dnac_username }}"
+            dnac_password: "{{ dnac_password }}"
+            dnac_verify: "{{ dnac_verify }}"
+            dnac_version: "{{ dnac_version }}"
+            dnac_debug: "{{ dnac_debug }}"
+            dnac_log_level: DEBUG
+            dnac_log: true
+            config_verify: true
+            state: merged
+            config:
+              - configuration_templates:
+                  project_name: "static_host_offboarding"
+                  template_name: "static_host_offboarding_template"
+                  template_content: "{{ rendered_static_host_offboarding }}"
+                  version_description: "Auto-generated static host offboarding config"
+                  language: JINJA
+                  software_type: "IOS-XE"
+                  device_types:
+                    - product_family: Switches and Hubs
+              - deploy_template:
+                  project_name: "static_host_offboarding"
+                  template_name: "static_host_offboarding_template"
+                  force_push: true
+                  template_parameters:
+                    - param_name: "vlan_id"
+                      param_value: "1431"
+                    - param_name: "vlan_name"
+                      param_value: "testvlan31"
+                  device_details:
+                    device_ips: ["172.27.248.81"]
