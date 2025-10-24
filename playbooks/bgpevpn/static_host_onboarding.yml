@@ -31,7 +31,7 @@
 
         - name: Render static_host_onboarding_cli.j2 to a variable
           ansible.builtin.set_fact:
-            rendered_static_host_onboarding: "{{ lookup('template', '/Users/vpenke/ansible/dev/collections/ansible_collections/cisco/dnac/playbooks/bgpevpn/jinja_templates/static_host_onboarding_cli.j2') }}"
+            rendered_static_host_onboarding: "{{ lookup('template', './jinja_templates/static_host_onboarding_cli.j2') }}"
 
         - name: Print rendered_static_host_onboarding
           ansible.builtin.debug:
