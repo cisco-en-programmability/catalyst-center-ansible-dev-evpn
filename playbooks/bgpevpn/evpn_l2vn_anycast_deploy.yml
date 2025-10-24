@@ -1,5 +1,5 @@
 ---
-- name: Deploy BGP EVPN L2VN Configuration
+- name: Deploy BGP EVPN L2VN Anycast Configuration
   hosts: localhost
   gather_facts: false
   vars_files:
@@ -40,7 +40,7 @@
 
         - name: Render l2vn_anycast_cli.j2 to a variable
           ansible.builtin.set_fact:
-            rendered_l2vn_anycast: "{{ lookup('template', '/Users/vpenke/ansible/dev/collections/ansible_collections/cisco/dnac/playbooks/bgpevpn/jinja_templates/l2vn_anycast_cli.j2') }}"
+            rendered_l2vn_anycast: "{{ lookup('template', './jinja_templates/l2vn_anycast_cli.j2') }}"
 
         - name: Print rendered_l2vn_anycast
           ansible.builtin.debug:
