@@ -10,7 +10,7 @@
           ansible.builtin.assert:
             that:
               - asn is defined
-              - mac_address is defined
+              - devices is defined and devices|length > 0
               - l2vns is defined
               - l2vns is iterable
               - l2vns | length > 0
@@ -38,15 +38,20 @@
             index_var: idx
             label: "{{ item.l2vn_name | default('UNNAMED') }}"
 
-        - name: Render l2vn_anycast_cli.j2 to a variable
-          ansible.builtin.set_fact:
+        - name: Validate per-device structure
+          ansible.builtin.assert:
+            that:
+              - item.ip is defined
+              - item.mac_address is defined
+          loop: "{{ devices | default([]) }}"
+          loop_control:
+            label: "{{ item.ip }}"
+          when: devices is defined
+
+        - name: Deploy L2VN anycast config to each device
+          vars:
+            mac_address: "{{ item.mac_address }}"
             rendered_l2vn_anycast: "{{ lookup('template', './jinja_templates/l2vn_anycast_cli.j2') }}"
-
-        - name: Print rendered_l2vn_anycast
-          ansible.builtin.debug:
-            var: rendered_l2vn_anycast
-
-        - name: Create new l2vn anycast template.
           cisco.dnac.template_workflow_manager:
             dnac_host: "{{ dnac_host }}"
             dnac_port: "{{ dnac_port }}"
@@ -62,21 +67,24 @@
             config:
               - configuration_templates:
                   project_name: "evpn_l2vn_anycast"
-                  template_name: "evpn_l2vn_anycast_template"
+                  template_name: "evpn_l2vn_anycast_template_{{ item.ip }}"
                   template_content: "{{ rendered_l2vn_anycast }}"
-                  version_description: "Auto-generated BGP EVPN L2VN anycast config"
+                  version_description: "Auto-generated BGP EVPN L2VN anycast config for {{ item.ip }}"
                   language: JINJA
                   software_type: "IOS-XE"
                   device_types:
                     - product_family: Switches and Hubs
               - deploy_template:
                   project_name: "evpn_l2vn_anycast"
-                  template_name: "evpn_l2vn_anycast_template"
+                  template_name: "evpn_l2vn_anycast_template_{{ item.ip }}"
                   force_push: true
                   template_parameters:
-                    - param_name: "vlan_id"
+                    - param_name: "vlan_id1"
                       param_value: "1431"
-                    - param_name: "vlan_name"
+                    - param_name: "vlan_name1"
                       param_value: "testvlan31"
                   device_details:
-                    device_ips: ["172.27.248.81"]
+                    device_ips: ["{{ item.ip }}"]
+          loop: "{{ devices | default([{'ip': device_ip, 'mac_address': mac_address}]) }}"
+          loop_control:
+            label: "{{ item.ip }}"
