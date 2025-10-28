@@ -1,0 +1,39 @@
+{% for l3vn in l3vns %}
+{# Remove BGP VRF Configuration #}
+router bgp {{ asn }}
+{% if l3vn.ipv4_unicast %}
+ no address-family ipv4 vrf {{ l3vn.vrf_name }}
+{% endif %}
+{% if l3vn.ipv6_unicast %}
+ no address-family ipv6 vrf {{ l3vn.vrf_name }}
+{% endif %}
+!
+
+{# Remove SVI Interface #}
+no interface Vlan{{ l3vn.vlan_id }}
+!
+
+{# Remove NVE Interface VNI to VRF mapping #}
+interface nve1
+ no member vni {{ l3vn.vni }} vrf {{ l3vn.vrf_name }}
+!
+
+{# Remove Loopback Interfaces for L3VN IP pools #}
+{% if l3vn.ip_pools is defined and l3vn.ip_pools|length > 0 %}
+{% for pool in l3vn.ip_pools %}
+no interface Loopback{{ l3vn.loopback_id }}{{ loop.index }}
+!
+{% endfor %}
+{% endif %}
+
+{# Remove VLAN Configuration #}
+no vlan {{ l3vn.vlan_id }}
+!
+no vlan configuration {{ l3vn.vlan_id }}
+!
+
+{# Remove VRF Definition #}
+no vrf definition {{ l3vn.vrf_name }}
+!
+
+{% endfor %}

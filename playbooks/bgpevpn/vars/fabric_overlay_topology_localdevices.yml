@@ -23,7 +23,7 @@ state: merged
 language: JINJA
 product_family: Switches and Hubs
 
-# Device inventory grouped by role
+# Device inventory grouped by role for BGP EVPN Fabric
 fabric_devices:
   spine:  # only one spine group typically
     - group_name: spine-group
@@ -38,6 +38,22 @@ fabric_devices:
           neighbors:
             - 99.3.3.3
             - 99.4.4.4
+            - 99.5.5.5
+            - 99.6.6.6
+            - 99.2.2.2
+        - device_name: evpn-app-c9k-27
+          mgmt_ip: 172.27.248.223
+          mac_address: 00:0c:29:82:f9:62
+          username: admin
+          password: Admin@123
+          enable_pwd: Lablab123!
+          loopback_ip: 99.6.6.6
+          neighbors:
+            - 99.3.3.3
+            - 99.4.4.4
+            - 99.1.1.1
+            - 99.5.5.5
+            - 99.2.2.2
   border:  # multiple border groups allowed
     - group_name: border-group1
       devices:
@@ -50,6 +66,7 @@ fabric_devices:
           loopback_ip: 99.3.3.3
           neighbors:
             - 99.1.1.1
+            - 99.6.6.6
   leaf:  # multiple leaf groups allowed
     - group_name: leaf-group1
       devices:
@@ -62,6 +79,29 @@ fabric_devices:
           loopback_ip: 99.4.4.4
           neighbors:
             - 99.1.1.1
+            - 99.6.6.6
+    - group_name: leaf-group2
+      devices:
+        - device_name: evpn-app-c9k-28
+          mgmt_ip: 172.27.248.224
+          mac_address: 00:0c:29:4e:63:a9
+          username: admin
+          password: Admin@123
+          enable_pwd: Lablab123!
+          loopback_ip: 99.2.2.2
+          neighbors:
+            - 99.1.1.1
+            - 99.6.6.6
+        - device_name: evpn-app-vm26
+          mgmt_ip: 172.27.248.222
+          mac_address: 00:0c:29:b4:2b:aa
+          username: admin
+          password: Admin@123
+          enable_pwd: Lablab123!
+          loopback_ip: 99.5.5.5
+          neighbors:
+            - 99.1.1.1
+            - 99.6.6.6
 
 # Mapping role to template path
 role_template_map:

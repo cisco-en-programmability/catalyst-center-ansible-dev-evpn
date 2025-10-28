@@ -1,0 +1,173 @@
+---
+# L3VN Unicast specific parameters
+# Common variables (asn, l3vn_devices, soft_type, state, language, product_family) 
+# are imported from fabric_overlay_topology_localdevices.yml
+
+# L3VN Unicast definitions with IP pool details
+l3vns:
+  - l3vn_name: "PROD_VRF"
+    vrf_name: "PROD"
+    vlan_id: 4001
+    vni: 50001
+    rd: "1001:50001"
+    rt_import: 
+      - "1001:50001"
+    rt_export:
+      - "1001:50001"
+    ipv4_unicast: true
+    ipv6_unicast: false
+    redistribute:
+      - connected
+      #- static
+    # IP Pool details for PROD L3VN
+    ip_pools:
+      - pool_name: "PROD_POOL_1"
+        network_v4: "11.11.0.0"
+        subnet_v4: "255.255.255.255"
+        gateway: "11.11.0.1"
+        dhcp_server: "11.11.0.10"
+    loopback_id: "101"
+  - l3vn_name: "DEV_VRF"
+    vrf_name: "DEV"
+    vlan_id: 4002
+    vni: 50002
+    rd: "1001:50002"
+    rt_import:
+      - "1001:50002"
+    rt_export:
+      - "1001:50002"
+    ipv4_unicast: true
+    ipv6_unicast: false
+    redistribute:
+      - connected
+      #- static
+    # IP Pool details for DEV L3VN
+    ip_pools:
+      - pool_name: "DEV_POOL_1"
+        network_v4: "21.11.0.0"
+        subnet_v4: "255.255.255.255"
+        gateway: "21.11.0.1"
+        dhcp_server: "21.11.0.10"
+    loopback_id: "102"
+  - l3vn_name: "TEST_VRF"
+    vrf_name: "TEST"
+    vlan_id: 4003
+    vni: 50003
+    rd: "1001:50003"
+    rt_import:
+      - "1001:50003"
+    rt_export:
+      - "1001:50003"
+    ipv4_unicast: true
+    ipv6_unicast: true
+    redistribute:
+      - connected
+      #- static
+      #- ospf
+    # IP Pool details for TEST L3VN (dual-stack)
+    ip_pools:
+      - pool_name: "TEST_POOL_1"
+        network_v4: "11.11.0.0"
+        subnet_v4: "255.255.255.255"
+        gateway: "11.11.0.1"
+        dhcp_server: "11.11.0.10"
+    ipv6_pools:
+      - pool_name: "TEST_IPV6_POOL_1"
+        network: "2001:db8:300::/48"
+        gateway: "2001:db8:300::1"
+    loopback_id: "103"
+
+l3vn_devices: # Spine is not included as no config needed for spine in L3VN Unicast
+  border:  # multiple border groups allowed
+    - group_name: border-group1
+      devices:
+        - device_name: evpn-app-c9k-30
+          mgmt_ip: 172.27.248.82
+          mac_address: 00:0c:29:c9:ee:a0
+          username: admin
+          password: Admin@123
+          enable_pwd: Lablab123!
+          loopback_ip: 99.3.3.3
+          neighbors:
+            - 99.1.1.1
+            - 99.6.6.6
+  leaf:  # multiple leaf groups allowed
+    - group_name: leaf-group1
+      devices:
+        - device_name: evpn-app-c9k-31
+          mgmt_ip: 172.27.248.83
+          mac_address: 00:50:56:be:98:20
+          username: admin
+          password: Admin@123
+          enable_pwd: Lablab123!
+          loopback_ip: 99.4.4.4
+          neighbors:
+            - 99.1.1.1
+            - 99.6.6.6
+    - group_name: leaf-group2
+      devices:
+        - device_name: evpn-app-c9k-28
+          mgmt_ip: 172.27.248.224
+          mac_address: 00:0c:29:4e:63:a9
+          username: admin
+          password: Admin@123
+          enable_pwd: Lablab123!
+          loopback_ip: 99.2.2.2
+          neighbors:
+            - 99.1.1.1
+            - 99.6.6.6
+        - device_name: evpn-app-vm26
+          mgmt_ip: 172.27.248.222
+          mac_address: 00:0c:29:b4:2b:aa
+          username: admin
+          password: Admin@123
+          enable_pwd: Lablab123!
+          loopback_ip: 99.5.5.5
+          neighbors:
+            - 99.1.1.1
+            - 99.6.6.6
+
+# Mapping role to template path for L3VN Unicast
+role_template_map:
+  leaf: ./jinja_templates/l3vn_unicast_leaf_cli.j2
+  border: ./jinja_templates/l3vn_unicast_border_cli.j2
+  leaf_delete: ./jinja_templates/l3vn_unicast_leaf_delete_cli.j2
+  border_delete: ./jinja_templates/l3vn_unicast_border_delete_cli.j2
+
+# L3VN Unicast global configuration parameters
+l3vn_global_config:
+  # BGP Configuration
+  bgp_confederation_id: null
+  bgp_cluster_id: null
+  maximum_paths: 4
+  maximum_paths_eibgp: 4
+  
+  # L3VN Interface defaults  
+  svi_mtu: 9000
+  svi_autostate: false
+  
+  # Loopback interface range for L3VNs
+  loopback_range_start: 101
+  loopback_range_end: 200
+  
+  # DHCP relay configuration
+  dhcp_relay_enabled: true
+  dhcp_relay_information_option: true
+
+# Security and QoS policies for L3VNs
+l3vn_policies:
+  # Access control lists
+  default_acl:
+    - "permit ip any any"
+  
+  # QoS class maps
+  qos_class_maps:
+    - name: "VOICE_TRAFFIC"
+      match_dscp: "ef"
+    - name: "VIDEO_TRAFFIC" 
+      match_dscp: "af41"
+    - name: "DATA_TRAFFIC"
+      match_dscp: "default"
+
+# L3VN Unicast specific deployment parameters
+proj_name: L3VN_UNICAST_AUTOGEN

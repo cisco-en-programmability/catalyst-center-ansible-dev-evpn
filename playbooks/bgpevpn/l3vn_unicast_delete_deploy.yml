@@ -1,12 +1,13 @@
 ---
-- name: Delete BGP EVPN Fabric Configuration
+- name: Delete L3VN Unicast Configuration
   hosts: localhost
   gather_facts: false
   vars_files:
-    - ./vars/fabric_overlay_topology_localdevices.yml
+    - ./vars/fabric_overlay_topology_localdevices.yml  # Common variables
+    - ./vars/l3vn_unicast_topology_vars.yml            # L3VN specific variables
     - ../credentials.yml
   vars:
-    output_dir: ./fabric_rendered_delete
+    output_dir: ./rendered_l3vn_unicast_delete
     catc_credentials_file: ../credentials.yml
 
   tasks:
@@ -16,7 +17,7 @@
             state: absent
           loop:
             - "{{ output_dir }}"
-            - "./fabric_rendered_delete"
+            - "./rendered_l3vn_unicast_delete"
           
         - name: Ensure rendered output directory exists
           ansible.builtin.file:
@@ -31,7 +32,7 @@
         - name: Build flattened role -> devices structure
           ansible.builtin.set_fact:
             role_devices: "{{ role_devices | combine({ item.key: (item.value | map(attribute='devices') | list | flatten(levels=1)) }) }}"
-          loop: "{{ fabric_devices | dict2items }}"
+          loop: "{{ l3vn_devices | dict2items }}"
           loop_control:
             loop_var: item
         
@@ -81,16 +82,16 @@
 
         - name: Debug planned render items count
           ansible.builtin.debug:
-            msg: "Will render {{ render_items | length }} device delete configs"
+            msg: "Will render {{ render_items | length }} device L3VN unicast delete configs"
 
         - name: Debug first 3 render items
           ansible.builtin.debug:
             var: render_items[0:3]
 
-        - name: Render delete configs for all devices
+        - name: Render L3VN unicast delete configs for all devices
           ansible.builtin.template:
             src: "{{ role_template_map[item.0.key + '_delete'] }}"
-            dest: "{{ output_dir }}/{{ item.1.device_name }}-{{ item.0.key }}-delete.cfg"
+            dest: "{{ output_dir }}/{{ item.1.device_name }}-{{ item.0.key }}-l3vn-unicast-delete.cfg"
           with_subelements:
             - "{{ role_devices | dict2items }}"
             - value
@@ -98,11 +99,6 @@
           loop_control:
             label: "{{ item.1.device_name }} ({{ item.0.key }})"
           vars:
-            peer_policy_template: "{{ peer_policy[item.0.key] }}"
-            peer_session_template: "{{ peer_session[item.0.key] }}"
-            dhcp_source_interface: "{{ router_id_interface }}"
-            neighbor: "{{ item.1.neighbors | default([]) }}"
-            loopback_ip: "{{ item.1.loopback_ip }}"
             device_mgmt_ip: "{{ item.1.mgmt_ip }}"
             device_username: "{{ item.1.username }}"
             device_password: "{{ item.1.password }}"
@@ -126,30 +122,35 @@
             file: "{{ catc_credentials_file }}"
           ignore_errors: true
 
-        - name: Ensure evpn_delete_items is defined
+        - name: Ensure l3vn_delete_items is defined
           ansible.builtin.set_fact:
-            evpn_delete_items: []
+            l3vn_delete_items: []
             
         - name: Define Catalyst Center project name for delete
           ansible.builtin.set_fact:
-            proj_name: BGP_EVPN_FABRIC_DELETE_AUTOGEN
+            proj_name: L3VN_UNICAST_DELETE_AUTOGEN
             
         - name: Push delete configs via Catalyst Center template API
           when: catc_host is defined
           block:
-            - name: Build delete payload list
+            - name: Build delete payload list from L3VN devices
               ansible.builtin.set_fact:
-                evpn_delete_items: "{{ evpn_delete_items | default([]) + [ { 'device_name': (item.item | regex_replace('-[^-]+-delete\\.cfg$','')), 'config': (item.content | b64decode) } ] }}"
-              loop: "{{ rendered_delete_files.results }}"
+                l3vn_delete_items: "{{ l3vn_delete_items | default([]) + [ { 'device_name': item.1.device_name, 'device_mgmt_ip': item.1.mgmt_ip, 'device_username': item.1.username, 'device_password': item.1.password, 'config': (rendered_delete_files.results | selectattr('item', 'match', '.*' + item.1.device_name + '-' + item.0.key + '-l3vn-unicast-delete\\.cfg$') | first).content | b64decode } ] }}"
+              with_subelements:
+                - "{{ role_devices | dict2items }}"
+                - value
+                - skip_missing: True
+              loop_control:
+                label: "{{ item.1.device_name }} ({{ item.0.key }})"
 
         - name: Debug delete deployment configuration
           ansible.builtin.debug:
             msg: 
               - "Project: {{ proj_name }}"
-              - "Template: {{ cfg.device_name }}-DELETE"
+              - "Template: {{ cfg.device_name }}-L3VN-UNICAST-DELETE"
               - "Device: {{ cfg.device_name }}"
               - "Config length: {{ cfg.config | length }}"
-          loop: "{{ evpn_delete_items }}"
+          loop: "{{ l3vn_delete_items }}"
           loop_control:
             loop_var: cfg
 
@@ -159,7 +160,7 @@
             language: JINJA
             soft_type: IOS-XE
             product_family: Switches and Hubs
-          loop: "{{ evpn_delete_items }}"
+          loop: "{{ l3vn_delete_items }}"
           loop_control:
             loop_var: cfg
           cisco.dnac.template_workflow_manager:
@@ -173,17 +174,23 @@
             config:
               - configuration_templates:
                   project_name: "{{ proj_name }}"
-                  template_name: "{{ cfg.device_name }}-DELETE"
+                  template_name: "{{ cfg.device_name }}-L3VN-UNICAST-DELETE"
                   template_content: "{{ cfg.config }}"
-                  version_description: "Auto-generated BGP EVPN fabric delete config"
+                  version_description: "Auto-generated L3VN unicast delete config"
                   language: "{{ language }}"
                   software_type: "{{ soft_type }}"
                   device_types:
                     - product_family: "{{ product_family }}"
               - deploy_template:
                   project_name: "{{ proj_name }}"
-                  template_name: "{{ cfg.device_name }}-DELETE"
+                  template_name: "{{ cfg.device_name }}-L3VN-UNICAST-DELETE"
                   force_push: true
+                  template_params:
+                    asn: "{{ asn }}"
+                    device_name: "{{ cfg.device_name }}"
+                    mgmt_ip: "{{ cfg.device_mgmt_ip }}"
+                    username: "{{ cfg.device_username }}"
+                    password: "{{ cfg.device_password }}"
                   device_details:
                     device_hostnames:
                       - "{{ cfg.device_name }}"
@@ -194,7 +201,7 @@
 
         - name: Show Catalyst Center delete push summary
           ansible.builtin.debug:
-            msg: "Deployed {{ catc_delete_results.results | length }} delete templates via Catalyst Center"
+            msg: "Deployed {{ catc_delete_results.results | length }} L3VN unicast delete templates via Catalyst Center"
 
         - name: Preserve rendered delete files for debugging (optional)
           ansible.builtin.debug:
