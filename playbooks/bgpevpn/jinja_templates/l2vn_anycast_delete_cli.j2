@@ -1,0 +1,11 @@
+{% for l2vn in l2vns %}
+no vlan configuration {{ l2vn.vlan_id }}
+no vlan {{ l2vn.vlan_id }}
+no interface Vlan{{ l2vn.vlan_id }}
+no l2vpn evpn instance {{ l2vn.vlan_id }} vlan-based
+{% endfor %}
+interface nve1
+{% for l2vn in l2vns %}
+ no member vni {{ l2vn.vni }}
+{% endfor %}
+ exit

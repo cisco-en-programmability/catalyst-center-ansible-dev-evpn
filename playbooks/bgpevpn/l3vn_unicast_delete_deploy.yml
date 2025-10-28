@@ -1,0 +1,215 @@
+---
+- name: Delete L3VN Unicast Configuration
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ./vars/fabric_overlay_topology_localdevices.yml  # Common variables
+    - ./vars/l3vn_unicast_topology_vars.yml            # L3VN specific variables
+    - ../credentials.yml
+  vars:
+    output_dir: ./rendered_l3vn_unicast_delete
+    catc_credentials_file: ../credentials.yml
+
+  tasks:
+        - name: Clean up any existing rendered directories
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "{{ output_dir }}"
+            - "./rendered_l3vn_unicast_delete"
+          
+        - name: Ensure rendered output directory exists
+          ansible.builtin.file:
+            path: "{{ output_dir }}"
+            state: directory
+            mode: '0755'
+
+        - name: Initialize empty role_devices structure
+          ansible.builtin.set_fact:
+            role_devices: {}
+
+        - name: Build flattened role -> devices structure
+          ansible.builtin.set_fact:
+            role_devices: "{{ role_devices | combine({ item.key: (item.value | map(attribute='devices') | list | flatten(levels=1)) }) }}"
+          loop: "{{ l3vn_devices | dict2items }}"
+          loop_control:
+            loop_var: item
+        
+        - name: Debug role_devices structure
+          ansible.builtin.debug:
+            var: role_devices
+
+        - name: Debug role_template_map
+          ansible.builtin.debug:
+            var: role_template_map
+
+        - name: Sanity check role_template_map defined
+          ansible.builtin.assert:
+            that:
+              - role_template_map is defined
+              - role_template_map | length > 0
+            fail_msg: "role_template_map is undefined or empty; cannot select templates"
+
+        - name: Extract delete templates from role_template_map
+          ansible.builtin.set_fact:
+            delete_template_map: >-
+              {{ role_template_map | dict2items | selectattr('key', 'match', '.*_delete$') | items2dict(key_name='key', value_name='value') }}
+
+        - name: Check delete template files exist
+          ansible.builtin.stat:
+            path: "{{ item.value }}"
+          loop: "{{ delete_template_map | dict2items }}"
+          register: delete_template_stats
+
+        - name: Build missing delete template list
+          ansible.builtin.set_fact:
+            missing_delete_templates: >-
+              {{ delete_template_stats.results
+                 | selectattr('stat.exists','equalto', False)
+                 | map(attribute='item.value')
+                 | list }}
+
+        - name: Assert all delete template files found
+          ansible.builtin.assert:
+            that:
+              - missing_delete_templates | length == 0
+            fail_msg: "Missing delete template files: {{ missing_delete_templates }}"
+
+        - name: Build render item pairs (role/device) for delete
+          ansible.builtin.set_fact:
+            render_items: "{{ role_devices | dict2items | subelements('value') }}"
+
+        - name: Debug planned render items count
+          ansible.builtin.debug:
+            msg: "Will render {{ render_items | length }} device L3VN unicast delete configs"
+
+        - name: Debug first 3 render items
+          ansible.builtin.debug:
+            var: render_items[0:3]
+
+        - name: Render L3VN unicast delete configs for all devices
+          ansible.builtin.template:
+            src: "{{ role_template_map[item.0.key + '_delete'] }}"
+            dest: "{{ output_dir }}/{{ item.1.device_name }}-{{ item.0.key }}-l3vn-unicast-delete.cfg"
+          with_subelements:
+            - "{{ role_devices | dict2items }}"
+            - value
+            - skip_missing: True
+          loop_control:
+            label: "{{ item.1.device_name }} ({{ item.0.key }})"
+          vars:
+            device_mgmt_ip: "{{ item.1.mgmt_ip }}"
+            device_username: "{{ item.1.username }}"
+            device_password: "{{ item.1.password }}"
+
+        - name: Display rendered delete files list
+          ansible.builtin.command: ls -1 {{ output_dir }}
+          register: ls_output
+
+        - name: Show rendered delete config file names
+          ansible.builtin.debug:
+            var: ls_output.stdout_lines
+
+        - name: Read rendered delete configs content
+          ansible.builtin.slurp:
+            src: "{{ output_dir }}/{{ item }}"
+          loop: "{{ ls_output.stdout_lines }}"
+          register: rendered_delete_files
+
+        - name: Include Catalyst Center credentials (if available)
+          ansible.builtin.include_vars:
+            file: "{{ catc_credentials_file }}"
+          ignore_errors: true
+
+        - name: Ensure l3vn_delete_items is defined
+          ansible.builtin.set_fact:
+            l3vn_delete_items: []
+            
+        - name: Define Catalyst Center project name for delete
+          ansible.builtin.set_fact:
+            proj_name: L3VN_UNICAST_DELETE_AUTOGEN
+            
+        - name: Push delete configs via Catalyst Center template API
+          when: catc_host is defined
+          block:
+            - name: Build delete payload list from L3VN devices
+              ansible.builtin.set_fact:
+                l3vn_delete_items: "{{ l3vn_delete_items | default([]) + [ { 'device_name': item.1.device_name, 'device_mgmt_ip': item.1.mgmt_ip, 'device_username': item.1.username, 'device_password': item.1.password, 'config': (rendered_delete_files.results | selectattr('item', 'match', '.*' + item.1.device_name + '-' + item.0.key + '-l3vn-unicast-delete\\.cfg$') | first).content | b64decode } ] }}"
+              with_subelements:
+                - "{{ role_devices | dict2items }}"
+                - value
+                - skip_missing: True
+              loop_control:
+                label: "{{ item.1.device_name }} ({{ item.0.key }})"
+
+        - name: Debug delete deployment configuration
+          ansible.builtin.debug:
+            msg: 
+              - "Project: {{ proj_name }}"
+              - "Template: {{ cfg.device_name }}-L3VN-UNICAST-DELETE"
+              - "Device: {{ cfg.device_name }}"
+              - "Config length: {{ cfg.config | length }}"
+          loop: "{{ l3vn_delete_items }}"
+          loop_control:
+            loop_var: cfg
+
+        - name: Deploy each delete config using template_workflow_manager module
+          vars:
+            state: merged
+            language: JINJA
+            soft_type: IOS-XE
+            product_family: Switches and Hubs
+          loop: "{{ l3vn_delete_items }}"
+          loop_control:
+            loop_var: cfg
+          cisco.dnac.template_workflow_manager:
+            dnac_host: "{{ catc_host }}"
+            dnac_port: "{{ catc_port }}"
+            dnac_username: "{{ catc_username }}"
+            dnac_password: "{{ catc_password }}"
+            dnac_verify: "{{ catc_verify }}"
+            dnac_version: "{{ catc_version }}"
+            state: "{{ state }}"
+            config:
+              - configuration_templates:
+                  project_name: "{{ proj_name }}"
+                  template_name: "{{ cfg.device_name }}-L3VN-UNICAST-DELETE"
+                  template_content: "{{ cfg.config }}"
+                  version_description: "Auto-generated L3VN unicast delete config"
+                  language: "{{ language }}"
+                  software_type: "{{ soft_type }}"
+                  device_types:
+                    - product_family: "{{ product_family }}"
+              - deploy_template:
+                  project_name: "{{ proj_name }}"
+                  template_name: "{{ cfg.device_name }}-L3VN-UNICAST-DELETE"
+                  force_push: true
+                  template_params:
+                    asn: "{{ asn }}"
+                    device_name: "{{ cfg.device_name }}"
+                    mgmt_ip: "{{ cfg.device_mgmt_ip }}"
+                    username: "{{ cfg.device_username }}"
+                    password: "{{ cfg.device_password }}"
+                  device_details:
+                    device_hostnames:
+                      - "{{ cfg.device_name }}"
+                  template_parameters:
+                    - param_name: "device_name"
+                      param_value: "{{ cfg.device_name }}"
+          register: catc_delete_results
+
+        - name: Show Catalyst Center delete push summary
+          ansible.builtin.debug:
+            msg: "Deployed {{ catc_delete_results.results | length }} L3VN unicast delete templates via Catalyst Center"
+
+        - name: Preserve rendered delete files for debugging (optional)
+          ansible.builtin.debug:
+            msg: "Rendered delete config files preserved in {{ output_dir }} for debugging"
+          when: not (cleanup_rendered_files | default(true) | bool)
+
+        - name: Clean up rendered delete directory after deployment
+          ansible.builtin.file:
+            path: "{{ output_dir }}"
+            state: absent
+          when: cleanup_rendered_files | default(true) | bool

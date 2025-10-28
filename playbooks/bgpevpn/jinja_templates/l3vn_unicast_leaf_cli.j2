@@ -1,0 +1,108 @@
+{% for l3vn in l3vns %}
+{# VRF Definition #}
+vrf definition {{ l3vn.vrf_name }}
+ rd {{ l3vn.rd }}
+
+ address-family ipv4
+{% for rt in l3vn.rt_export %}
+  route-target export {{ rt }}
+{% endfor %}
+{% for rt in l3vn.rt_export %}
+  route-target export {{ rt }} stitching
+{% endfor %}
+{% for rt in l3vn.rt_import %}
+  route-target import {{ rt }}
+{% endfor %}
+{% for rt in l3vn.rt_import %}
+  route-target import {{ rt }} stitching
+{% endfor %}
+ exit-address-family
+
+ address-family ipv6
+{% for rt in l3vn.rt_export %}
+  route-target export {{ rt }}
+{% endfor %}
+{% for rt in l3vn.rt_import %}
+  route-target import {{ rt }}
+{% endfor %}
+{% for rt in l3vn.rt_export %}
+  route-target export {{ rt }} stitching
+{% endfor %}
+{% for rt in l3vn.rt_import %}
+  route-target import {{ rt }} stitching
+{% endfor %}
+ exit-address-family
+!
+
+{# VLAN Configuration #}
+vlan configuration {{ l3vn.vlan_id }}
+ member vni {{ l3vn.vni }}
+!
+vlan {{ l3vn.vlan_id }}
+ name Vlan{{ l3vn.vlan_id }}
+ exit
+!
+
+{# NVE Interface - VNI to VRF mapping #}
+interface nve1
+ member vni {{ l3vn.vni }} vrf {{ l3vn.vrf_name }}
+!
+
+{# Loopback Interface for L3VN using IP pools #}
+{% if l3vn.ip_pools is defined and l3vn.ip_pools|length > 0 %}
+{% for pool in l3vn.ip_pools %}
+interface Loopback{{ l3vn.loopback_id }}{{ loop.index }}
+ vrf forwarding {{ l3vn.vrf_name }}
+ ip address {{ pool.network_v4 }} {{ pool.subnet_v4 }}
+ {% if l3vn.ipv6_pools is defined and l3vn.ipv6_pools|length > 0 %}
+ {% for ipv6_pool in l3vn.ipv6_pools %}
+ 
+ ipv6 address {{ ipv6_pool.network | regex_replace('::/\d+', '::1/128') }}
+ ipv6 enable
+ {% endfor %}
+ {% endif %}
+ exit
+!
+{% endfor %}
+{% endif %}
+
+{# SVI Interface #}
+interface Vlan{{ l3vn.vlan_id }}
+ vrf forwarding {{ l3vn.vrf_name }}
+ {% if l3vn.ipv6_unicast %}
+ 
+ ipv6 enable
+ {% endif %}
+
+ ip unnumbered Loopback0
+ ip pim sparse-mode
+ no autostate
+ exit
+!
+
+{% endfor %}
+
+{# BGP Configuration for all L3VNs #}
+router bgp {{ asn }}
+{% for l3vn in l3vns %}
+{% if l3vn.ipv4_unicast %}
+ address-family ipv4 vrf {{ l3vn.vrf_name }}
+  advertise l2vpn evpn
+  maximum-paths eibgp 4
+{% for redist in l3vn.redistribute %}
+  redistribute {{ redist }}
+{% endfor %}
+ exit-address-family
+{% endif %}
+{% if l3vn.ipv6_unicast %}
+ address-family ipv6 vrf {{ l3vn.vrf_name }}
+  advertise l2vpn evpn
+  maximum-paths eibgp 4
+{% for redist in l3vn.redistribute %}
+  redistribute {{ redist }}
+{% endfor %}
+ exit-address-family
+{% endif %}
+{% endfor %}
+ exit
+!

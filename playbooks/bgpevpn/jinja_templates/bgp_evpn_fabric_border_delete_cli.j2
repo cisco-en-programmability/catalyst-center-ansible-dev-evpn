@@ -1,0 +1,19 @@
+no interface nve1
+!
+
+no ip prefix-list ip_route_map_towards_wan_handoff seq 5 permit 0.0.0.0/0 le 31
+no ip prefix-list ip_route_map_towards_wan_handoff seq 10 permit 177.0.0.0/16 ge 17
+no ipv6 prefix-list ipv6_route_map_towards_wan_handoff seq 5 permit ::/0 le 127
+no ipv6 prefix-list ipv6_route_map_towards_wan_handoff seq 10 permit 2002:177:0:1::/64 ge 65
+no route-map ip_route_map_towards_wan_handoff permit 10
+no route-map ipv6_route_map_towards_wan_handoff permit 10
+!
+
+no ip dhcp relay information option vpn
+no ip dhcp relay information option
+no ip dhcp compatibility suboption link-selection standard
+no ip dhcp compatibility suboption server-override standard
+!
+
+no router bgp {{ asn }}
+!

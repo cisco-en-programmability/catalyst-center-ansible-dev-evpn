@@ -1,0 +1,48 @@
+{% for l2vn in l2vns %}
+l2vpn evpn instance {{ l2vn.vlan_id }} vlan-based
+ encapsulation vxlan
+ route-target export {{ asn }}:{{ l2vn.vlan_id }}
+ route-target import {{ asn }}:{{ l2vn.vlan_id }}
+ no auto-route-target
+ replication-type ingress
+!
+vlan configuration {{ l2vn.vlan_id }}
+ member evpn-instance {{ l2vn.vlan_id }} vni {{ l2vn.vni }}
+!
+vlan {{ l2vn.vlan_id }}
+ name {{ l2vn.l2vn_name }}
+ no shutdown
+ exit
+!
+interface nve1
+ member vni {{ l2vn.vni }} ingress-replication
+!
+interface Vlan{{ l2vn.vlan_id }}
+ mac-address {{ mac_address }}
+ vrf forwarding {{ l2vn.associated_l3vn }}
+ ip address {{ l2vn.l2vn_pool.ipv4_address }} {{ l2vn.l2vn_pool.ipv4_netmask }}
+{% if l2vn.l2vn_pool.ipv6_address is defined %}
+ ipv6 enable
+ ipv6 address {{ l2vn.l2vn_pool.ipv6_address }}/{{ l2vn.l2vn_pool.ipv6_netmask }}
+{% if l2vn.dhcp_relay is defined and l2vn.dhcp_relay.dhcpv6_relay is defined %}
+{% if l2vn.dhcp_relay.dhcpv6_relay.dhcpv6_server_vrf == "global" %}
+ ipv6 dhcp relay destination global {{ l2vn.dhcp_relay.dhcpv6_relay.dhcpv6_server_ip }}
+{% else %}
+ ipv6 dhcp relay destination {{ l2vn.dhcp_relay.dhcpv6_relay.dhcpv6_server_ip }}
+ ipv6 dhcp relay source-interface Loopback5838
+{% endif %}
+{% endif %}
+{% endif %}
+ ip pim sparse-mode
+{% if l2vn.dhcp_relay is defined and l2vn.dhcp_relay.dhcpv4_relay is defined %}
+{% if l2vn.dhcp_relay.dhcpv4_relay.dhcpv4_server_vrf == "global" %}
+ ip helper-address global {{ l2vn.dhcp_relay.dhcpv4_relay.dhcpv4_server_ip }}
+{% else %}
+ ip helper-address {{ l2vn.dhcp_relay.dhcpv4_relay.dhcpv4_server_ip }}
+ ip dhcp relay source-interface Loopback5838
+{% endif %}
+{% endif %}
+ ip igmp version 3
+ exit
+!
+{% endfor %}

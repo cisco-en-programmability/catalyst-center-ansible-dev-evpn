@@ -1,0 +1,27 @@
+asn: 1001
+l2vns:
+  - l2vn_name: L2VN-MCAST-1
+    vlan_id: 40
+    vni: 5040
+    associated_l3vn: vrf-1
+    multicast_group: 237.1.1.1
+    l2vn_pool:
+      ipv4_address: 14.14.0.1
+      ipv4_netmask: 255.255.0.0
+      ipv6_address: 2004::1
+      ipv6_netmask: 64
+  - l2vn_name: L2VN-MCAST-2
+    vlan_id: 50
+    vni: 5050
+    associated_l3vn: vrf-1
+    multicast_group: 237.1.1.2
+    l2vn_pool:
+      ipv4_address: 15.15.0.1
+      ipv4_netmask: 255.255.0.0
+      ipv6_address: 2005::1
+      ipv6_netmask: 64
+devices:
+  - ip: 172.27.248.81
+    mac_address: 00:0c:29:a1:bd:78
+  - ip: 172.27.248.83
+    mac_address: 00:50:56:be:98:20
