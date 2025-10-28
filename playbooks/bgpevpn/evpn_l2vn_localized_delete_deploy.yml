@@ -26,6 +26,14 @@
             index_var: idx
             label: "{{ item.l2vn_name | default('UNNAMED') }}"
 
+        - name: Validate top-level devices_mgmt_ips input
+          ansible.builtin.assert:
+            that:
+              - devices_mgmt_ips is defined
+              - devices_mgmt_ips is iterable
+              - devices_mgmt_ips | length > 0
+            fail_msg: "Invalid top-level vars: need non-empty 'devices_mgmt_ips' list."
+
         - name: Render l2vn_localized_delete_cli.j2 to a variable
           ansible.builtin.set_fact:
             rendered_l2vn_localized_delete: "{{ lookup('template', './jinja_templates/l2vn_localized_delete_cli.j2') }}"
@@ -67,4 +75,4 @@
                     - param_name: "vlan_name"
                       param_value: "testvlan31"
                   device_details:
-                    device_ips: ["172.27.248.81"]
+                    device_ips: "{{ devices_mgmt_ips }}"

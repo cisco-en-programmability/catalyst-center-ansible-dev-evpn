@@ -1,4 +1,10 @@
 l2vns:
-    - l2vn_name: L2VN-11
-      vlan_id: 10
-      vni: 5001
+    - l2vn_name: L2VN-ANYCAST-1
+      vlan_id: 20
+      vni: 5020
+    - l2vn_name: L2VN-ANYCAST-2
+      vlan_id: 30
+      vni: 5030
+devices_mgmt_ips:
+    - 172.27.248.81
+    - 172.27.248.83
