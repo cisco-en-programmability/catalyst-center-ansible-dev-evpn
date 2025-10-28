@@ -1,21 +1,21 @@
 asn: 1001
 l2vns:
-  - l2vn_pool:
-        ipv4_address: 13.13.0.1
-        ipv4_netmask: 255.255.0.0
-        ipv6_address: 2002::1
-        ipv6_netmask: 64
-    l2vn_name: L2VN-loc-10
-    vlan_id: 11
+  - l2vn_name: L2VN-LOC-1
+    vlan_id: 60
     associated_l3vn: vrf-1
-  - l2vn_pool:
-        ipv4_address: 14.14.0.2
+    l2vn_pool:
+        ipv4_address: 16.16.0.1
         ipv4_netmask: 255.255.0.0
-        ipv6_address: 2003::2
+        ipv6_address: 2006::1
         ipv6_netmask: 64
-    l2vn_name: L2VN-loc-20
-    vlan_id: 12
+  - l2vn_name: L2VN-LOC-2
+    vlan_id: 70
     associated_l3vn: vrf-1
+    l2vn_pool:
+        ipv4_address: 17.17.0.1
+        ipv4_netmask: 255.255.0.0
+        ipv6_address: 2007::1
+        ipv6_netmask: 64
 devices:
   - ip: 172.27.248.81
     mac_address: 00:0c:29:a1:bd:78
