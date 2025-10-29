@@ -1,0 +1,4 @@
+{% for l2vn in l2vns %}
+no vlan {{ l2vn.vlan_id }}
+no interface Vlan{{ l2vn.vlan_id }}
+{% endfor %}

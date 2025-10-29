@@ -1,0 +1,27 @@
+asn: 1001
+l2vns:
+  - l2vn_name: L2VN-ANYCAST-1
+    vlan_id: 20
+    vni: 5020
+    associated_l3vn: vrf-1
+    l2vn_pool:
+      ipv4_address: 12.12.0.1
+      ipv4_netmask: 255.255.0.0
+      ipv6_address: 2002::1
+      ipv6_netmask: 64
+  - l2vn_name: L2VN-ANYCAST-2
+    vlan_id: 30
+    vni: 5030
+    associated_l3vn: vrf-1
+    l2vn_pool:
+      ipv4_address: 13.13.0.1
+      ipv4_netmask: 255.255.0.0
+      ipv6_address: 2003::1
+      ipv6_netmask: 64
+devices:
+  - ip: 172.27.248.81
+    mac_address: 00:0c:29:a1:bd:78
+  - ip: 172.27.248.83
+    mac_address: 00:50:56:be:98:20
+
+

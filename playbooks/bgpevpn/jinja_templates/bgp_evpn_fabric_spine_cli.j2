@@ -1,0 +1,44 @@
+router bgp {{ asn }}
+ template peer-policy {{ peer_policy_template }}
+  route-reflector-client
+  send-community both
+ exit-peer-policy
+ !
+ template peer-session {{ peer_session_template }}
+  remote-as {{ asn }}
+  log-neighbor-changes
+  update-source {{ update_source }}
+ exit-peer-session
+ !
+ bgp router-id interface {{ router_id_interface }}
+ bgp log-neighbor-changes
+ bgp graceful-restart
+ no bgp default ipv4-unicast
+{% for neighbor_ip in neighbor %}
+ neighbor {{ neighbor_ip }} inherit peer-session {{ peer_session_template }}
+{% endfor %}
+ !
+ address-family ipv4 mvpn
+{% for neighbor_ip in neighbor %}
+  neighbor {{ neighbor_ip }} activate
+  neighbor {{ neighbor_ip }} send-community both
+  neighbor {{ neighbor_ip }} inherit peer-policy {{ peer_policy_template }}
+{% endfor %}
+ exit-address-family
+ !
+ address-family ipv6 mvpn
+{% for neighbor_ip in neighbor %}
+  neighbor {{ neighbor_ip }} activate
+  neighbor {{ neighbor_ip }} send-community both
+  neighbor {{ neighbor_ip }} inherit peer-policy {{ peer_policy_template }}
+{% endfor %}
+ exit-address-family
+ !
+ address-family l2vpn evpn
+{% for neighbor_ip in neighbor %}
+  neighbor {{ neighbor_ip }} activate
+  neighbor {{ neighbor_ip }} send-community both
+  neighbor {{ neighbor_ip }} inherit peer-policy {{ peer_policy_template }}
+{% endfor %}
+ exit-address-family
+!
