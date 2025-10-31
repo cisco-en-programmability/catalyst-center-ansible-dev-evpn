@@ -1,0 +1,34 @@
+{% for intf in border_interfaces %}
+interface {{ intf.name }}
+ no switchport
+ exit
+
+interface {{ intf.name }}.{{ intf.vlan_id }}
+ encapsulation dot1Q {{ intf.vlan_id }}
+ vrf forwarding {{ intf.vrf }}
+ ipv6 enable
+ ip address {{ intf.ipv4.address }} {{ intf.ipv4.mask }}
+ ipv6 address {{ intf.ipv6.address }}/{{ intf.ipv6.prefix }}
+ exit
+{% endfor %}
+
+router bgp {{ bgp.asn }}
+
+{% for af in bgp.address_families %}
+ address-family {{ af.type }} vrf {{ af.vrf }}
+  advertise l2vpn evpn {{ af.evpn_id }}
+  bgp aggregate-timer {{ af.aggregate_timer }}
+  {% if af.type == 'ipv4' %}
+  aggregate-address {{ af.aggregate_prefix }} {{ af.aggregate_mask }} summary-only
+  {% elif af.type == 'ipv6' %}
+  aggregate-address {{ af.aggregate_prefix }} summary-only
+  {% endif %}
+  {% for nbr in af.neighbors %}
+  neighbor {{ nbr.ip }} remote-as {{ nbr.remote_as }}
+  neighbor {{ nbr.ip }} activate
+  neighbor {{ nbr.ip }} route-map {{ nbr.route_map }} out
+  {% endfor %}
+ exit-address-family
+{% endfor %}
+
+ exit
