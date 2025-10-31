@@ -48,7 +48,7 @@
 
     - name: Render border handoff configuration
       template:
-        src: templates/border_handoff.j2
+        src: ./jinja_templates/directly_connected_endpoint.j2
         dest: configs/border_handoff_{{ inventory_hostname }}.cfg
 
     - name: Push border handoff configuration to device
