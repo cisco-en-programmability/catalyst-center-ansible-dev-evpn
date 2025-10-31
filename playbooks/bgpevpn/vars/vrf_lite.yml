@@ -1,0 +1,96 @@
+border_interfaces:
+  - name: GigabitEthernet1/0/6
+    vlan_id: 1001
+    vrf: l3vn1
+    ipv4:
+      address: 10.10.0.1
+      mask: 255.255.0.0
+    ipv6:
+      address: 2001::1
+      prefix: 64
+
+  - name: GigabitEthernet1/0/7
+    vlan_id: 1002
+    vrf: l3vn2
+    ipv4:
+      address: 20.20.0.1
+      mask: 255.255.0.0
+    ipv6:
+      address: 2002::1
+      prefix: 64
+
+  - name: GigabitEthernet1/0/8
+    vlan_id: 1003
+    vrf: l3vn3
+    ipv4:
+      address: 13.13.0.1
+      mask: 255.255.0.0
+    ipv6:
+      address: 2003::1
+      prefix: 64
+
+bgp:
+  asn: 776
+  address_families:
+    - type: ipv4
+      vrf: l3vn1
+      evpn_id: 100
+      aggregate_timer: 0
+      aggregate_prefix: 10.10.0.0
+      aggregate_mask: 255.255.0.0
+      neighbors:
+        - ip: 10.10.0.2
+          remote_as: 5000
+          route_map: ip_route_map_towards_wan_handoff_l3vn1
+
+    - type: ipv6
+      vrf: l3vn1
+      evpn_id: 100
+      aggregate_timer: 0
+      aggregate_prefix: 2001::/48
+      neighbors:
+        - ip: 2001::2
+          remote_as: 5000
+          route_map: ipv6_route_map_towards_wan_handoff_l3vn1
+
+    - type: ipv4
+      vrf: l3vn2
+      evpn_id: 100
+      aggregate_timer: 0
+      aggregate_prefix: 20.20.0.0
+      aggregate_mask: 255.255.0.0
+      neighbors:
+        - ip: 20.20.0.2
+          remote_as: 6000
+          route_map: ip_route_map_towards_wan_handoff_l3vn2
+
+    - type: ipv6
+      vrf: l3vn2
+      evpn_id: 100
+      aggregate_timer: 0
+      aggregate_prefix: 2002::/48
+      neighbors:
+        - ip: 2002::2
+          remote_as: 6000
+          route_map: ipv6_route_map_towards_wan_handoff_l3vn2
+
+    - type: ipv4
+      vrf: l3vn3
+      evpn_id: 100
+      aggregate_timer: 0
+      aggregate_prefix: 13.13.0.0
+      aggregate_mask: 255.255.0.0
+      neighbors:
+        - ip: 13.13.0.2
+          remote_as: 7000
+          route_map: ip_route_map_towards_wan_handoff_l3vn3
+
+    - type: ipv6
+      vrf: l3vn3
+      evpn_id: 100
+      aggregate_timer: 0
+      aggregate_prefix: 2003::/48
+      neighbors:
+        - ip: 2003::2
+          remote_as: 7000
+          route_map: ipv6_route_map_towards_wan_handoff_l3vn3
